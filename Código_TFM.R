@@ -114,7 +114,10 @@ lapply(precios_diff, function(x) summary(ur.kpss(x, type = "mu")))
 # Test ADF en primeras diferencias 
 lapply(precios_diff, function(x) summary(ur.df(x, type = "drift", selectlags = "AIC")))
 
+# Test Phillips-Perron 
 
+lapply(precios_diff, function(x) tseries::pp.test(x))
+       
 # Test de cointegración de Johansen 
 
 johansen_trace <- ca.jo(
