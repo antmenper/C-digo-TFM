@@ -1609,3 +1609,87 @@ cat("VAR, AR_uni y LSTM sobre sus esquemas de evaluación completos.\n")
 cat("La comparación BVAR_multi vs BAR_uni es internamente consistente (mismos\n")
 cat("210 orígenes para ambos), pero no es directamente comparable en magnitud\n")
 cat("absoluta con las filas de VAR/AR_uni (1049 orígenes). Ver sección 6.6.\n")
+
+
+# Predicción modelo LSTM por divisas
+
+etiquetas_divisa <- c(
+  CHF = "Franco Suizo (CHF/USD)",
+  CNY = "Yuan Chino (CNY/USD)",
+  EUR = "Euro (EUR/USD)",
+  GBP = "Libra Esterlina (GBP/USD)",
+  JPY = "Yen Japonés (JPY/USD)"
+)
+
+for (div in vars_lstm) {
+  
+  # Filtrar datos de la divisa y horizonte h = 1
+  datos_div <- resultados_df |>
+    dplyr::filter(h == 1, divisa == div) |>
+    # Pasar a formato largo para mapear color dentro de aes()
+    tidyr::pivot_longer(
+      cols      = c(real, pred),
+      names_to  = "Serie",
+      values_to = "Valor"
+    ) |>
+    dplyr::mutate(
+      Serie = dplyr::recode(Serie,
+                            "real" = "Valor real",
+                            "pred" = "Predicción LSTM")
+    )
+  
+  p <- ggplot(datos_div, aes(x = fecha, y = Valor,
+                             color    = Serie,
+                             linewidth = Serie)) +
+    geom_line(alpha = 0.85) +
+    scale_color_manual(
+      name   = NULL,
+      values = c(
+        "Valor real"       = "black",
+        "Predicción LSTM"  = "#0070C0"
+      )
+    ) +
+    scale_linewidth_manual(
+      name   = NULL,
+      values = c(
+        "Valor real"       = 0.5,
+        "Predicción LSTM"  = 0.5
+      )
+    ) +
+    # Fusionar ambas guías en una sola leyenda
+    guides(
+      color     = guide_legend(override.aes = list(linewidth = 1.2)),
+      linewidth = "none"
+    ) +
+    labs(
+      title    = paste("LSTM — Predicciones vs. valores reales:",
+                       etiquetas_divisa[div]),
+      subtitle = paste("Horizonte h = 1 día |",
+                       "Evaluación rolling fuera de muestra (2023–2024)"),
+      x        = NULL,
+      y        = "Precio de cierre (USD por unidad de divisa)"
+    ) +
+    scale_x_date(
+      date_breaks = "3 months",
+      date_labels = "%b %Y"
+    ) +
+    theme_minimal(base_size = 11) +
+    theme(
+      legend.position  = "bottom",
+      legend.key.width = unit(1.5, "cm"),   # línea más larga en la leyenda
+      plot.title       = element_text(face = "bold", size = 11),
+      plot.subtitle    = element_text(size = 9, color = "grey40"),
+      axis.text.x      = element_text(angle = 30, hjust = 1)
+    )
+  
+  print(p)
+  
+  ggsave(
+    filename = paste0("LSTM_predicciones_h1_", div, ".png"),
+    plot     = p,
+    width    = 18,
+    height   = 9,
+    units    = "cm",
+    dpi      = 300
+  )
+}
